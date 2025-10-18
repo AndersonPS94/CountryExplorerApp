@@ -1,6 +1,11 @@
 package com.desafiodevspace.countryexplorer.viewmodel
 
+import android.Manifest
 import android.app.Application
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import androidx.annotation.RequiresPermission
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.desafiodevspace.countryexplorer.data.model.Country
@@ -11,11 +16,9 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-class CountryViewModel(
-    application: Application,
-    private val repository: CountryRepository = CountryRepository(application.applicationContext),
-    private val isOnlineProvider: () -> Boolean = { true } // injetável para testes
-) : AndroidViewModel(application) {
+class CountryViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository = CountryRepository(application.applicationContext)
 
     val countries: StateFlow<List<Country>> = repository.getAllCountriesLocal()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -85,7 +88,15 @@ class CountryViewModel(
     fun updatePopulationFilter(range: String?) { _selectedPopulation.value = range }
 
     init {
-        if (isOnlineProvider()) refreshCountries()
+        if (isOnline()) refreshCountries()
+    }
+
+    @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
+    private fun isOnline(): Boolean {
+        val cm = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val capabilities = cm.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     fun refreshCountries() {
@@ -104,7 +115,7 @@ class CountryViewModel(
     fun fetchCountryByCode(code: String) {
         viewModelScope.launch {
             if (code.isBlank()) {
-                _errorMessage.value = "Invalid country code."
+                _errorMessage.value = "Invalid country code.";
                 return@launch
             }
 
@@ -115,7 +126,7 @@ class CountryViewModel(
 
             _selectedCountry.value = repository.getCountryByCodeLocal(code).firstOrNull()
 
-            if (isOnlineProvider()) {
+            if (isOnline()) {
                 val result = repository.getCountryByCodeRemote(code)
                 result.onSuccess { country ->
                     _selectedCountry.value = country
