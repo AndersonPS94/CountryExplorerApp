@@ -6,51 +6,30 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.desafiodevspace.countryexplorer.data.model.CountryUiModel
 import com.desafiodevspace.countryexplorer.ui.screen.CountryDetailScreen
-import com.desafiodevspace.countryexplorer.ui.screen.CountryListWithFilters
+import com.desafiodevspace.countryexplorer.ui.screen.CountryListScreen
 import com.desafiodevspace.countryexplorer.ui.screen.FavoritesScreen
+import com.desafiodevspace.countryexplorer.ui.viewmodel.CountryViewModel
 
 @Composable
-fun CountryNavGraph(navController: NavHostController) {
-    NavHost(
-        navController = navController,
-        startDestination = Routes.CountryList.route
-    ) {
-        // Lista de países
+fun CountryNavGraph(navController: NavHostController, viewModel: CountryViewModel) {
+    NavHost(navController = navController, startDestination = Routes.CountryList.route) {
         composable(Routes.CountryList.route) {
-            val mockCountries = listOf(
-                CountryUiModel("Brasil", "América do Sul", "https://flagcdn.com/br.png", "BRA"),
-                CountryUiModel("França", "Europa", "https://flagcdn.com/fr.png", "FRA"),
-                CountryUiModel("Japão", "Ásia", "https://flagcdn.com/jp.png", "JPN"),
-                CountryUiModel("Canadá", "América do Norte", "https://flagcdn.com/ca.png", "CAN")
-            )
-            val mockFavorites = listOf("Brasil")
-
-            CountryListWithFilters(
-                countries = mockCountries,
-                favorites = mockFavorites,
-                onFavoriteClick = { countryName -> /* TODO: implementar favoritos */ },
-                onCountryClick = { code ->
-                    navController.navigate(Routes.CountryDetail.createRoute(code))
-                }
+            CountryListScreen(
+                viewModel = viewModel,
+                onCountryClick = { code -> navController.navigate(Routes.CountryDetail.createRoute(code)) },
+                onFavoriteClick = {}
             )
         }
 
-        // Favoritos
         composable(Routes.Favorites.route) {
-            val mockFavorites = listOf("Brasil", "Japão")
-
             FavoritesScreen(
-                favorites = mockFavorites,
-                onCountryClick = { code ->
-                    navController.navigate(Routes.CountryDetail.createRoute(code))
-                },
+                favorites = listOf(),
+                onCountryClick = { code -> navController.navigate(Routes.CountryDetail.createRoute(code)) },
                 onBack = { navController.popBackStack() }
             )
         }
 
-        // Detalhes do país
         composable(
             route = Routes.CountryDetail.route,
             arguments = listOf(navArgument("countryCode") { type = NavType.StringType })
@@ -58,6 +37,7 @@ fun CountryNavGraph(navController: NavHostController) {
             val code = backStackEntry.arguments?.getString("countryCode") ?: return@composable
             CountryDetailScreen(
                 countryCode = code,
+                viewModel = viewModel,
                 onBack = { navController.popBackStack() }
             )
         }

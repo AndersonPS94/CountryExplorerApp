@@ -3,9 +3,9 @@ package com.desafiodevspace.countryexplorer.data.network
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-object RetrofitInstance{
+object RetrofitInstance {
 
-    private const val  BASE_URL = "https://restcountries.com/v3.1/"
+    private const val BASE_URL = "https://restcountries.com/v3.1/"
 
     val api: ApiService by lazy {
         Retrofit.Builder()

@@ -87,17 +87,3 @@ fun CountryCard(
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewCountryCard() {
-    MaterialTheme {
-        CountryCard(
-            flagUrl = "https://flagcdn.com/w320/de.png",
-            name = "Germany",
-            region = "Europe",
-            isFavorite = true,
-            onFavoriteClick = {},
-            onClick = {}
-        )
-    }
-}

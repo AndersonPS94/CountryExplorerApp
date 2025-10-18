@@ -8,7 +8,8 @@ data class Country(
     val capital: List<String>?,
     val languages: Map<String, String>?,
     val currencies: Map<String, Currency>?,
-    val borders: List<String>?
+    val borders: List<String>?,
+    val cca3: String
 )
 
 data class Name(val common: String)

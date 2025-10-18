@@ -5,131 +5,172 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.tooling.preview.Preview
 import com.desafiodevspace.countryexplorer.data.model.CountryUiModel
 import com.desafiodevspace.countryexplorer.ui.components.CountryCard
 import com.desafiodevspace.countryexplorer.ui.components.FilterBottomSheet
 import com.desafiodevspace.countryexplorer.ui.components.SearchBar
+import com.desafiodevspace.countryexplorer.ui.viewmodel.CountryViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CountryListWithFilters(
-    countries: List<CountryUiModel>,
-    favorites: List<String>,
-    onFavoriteClick: (String) -> Unit,
+fun CountryListScreen(
+    viewModel: CountryViewModel,
     onCountryClick: (String) -> Unit,
+    onFavoriteClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val countries by viewModel.countries.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+
     var query by remember { mutableStateOf("") }
-    var showFilters by remember { mutableStateOf(false) }
+    var selectedRegion by remember { mutableStateOf<String?>(null) }
+    var selectedPopulation by remember { mutableStateOf<String?>(null) }
+    var isSheetVisible by remember { mutableStateOf(false) }
 
-    val scope = rememberCoroutineScope()
+    // Estado da lista filtrada
+    var filteredCountries by remember { mutableStateOf(listOf<CountryUiModel>()) }
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = true,
-                    onClick = { /* TODO: Navegar para lista de países */ },
-                    icon = { Icon(Icons.Default.Public, contentDescription = "Países") },
-                    label = { Text("Países") }
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { /* TODO: Navegar para favoritos */ },
-                    icon = { Icon(Icons.Default.Star, contentDescription = "Favoritos") },
-                    label = { Text("Favoritos") }
+    // Converte Country -> CountryUiModel
+    val countriesUi = countries.mapNotNull { country ->
+        try {
+            CountryUiModel(
+                name = country.name.common,
+                region = country.region,
+                flag = country.flags.png,
+                code = country.cca3,
+                population = country.population
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // Função auxiliar: populações
+    fun populationMatches(population: Long, range: String?): Boolean {
+        return when (range) {
+            "<1M" -> population < 1_000_000
+            "1M-10M" -> population in 1_000_000..10_000_000
+            "10M-100M" -> population in 10_000_000..100_000_000
+            ">100M" -> population > 100_000_000
+            else -> true
+        }
+    }
+
+    // Função que aplica filtros
+    fun applyFilters() {
+        filteredCountries = countriesUi
+            .filter { it.name.contains(query, ignoreCase = true) }
+            .filter { selectedRegion == null || it.region == selectedRegion }
+            .filter { selectedPopulation == null || populationMatches(it.population, selectedPopulation) }
+    }
+
+    // Atualiza lista assim que países são carregados
+    LaunchedEffect(countriesUi, query, selectedRegion, selectedPopulation) {
+        applyFilters()
+    }
+
+    // BottomSheet de filtros
+    if (isSheetVisible) {
+        ModalBottomSheet(
+            onDismissRequest = { isSheetVisible = false },
+            content = {
+                FilterBottomSheet(
+                    selectedRegion = selectedRegion,
+                    selectedPopulation = selectedPopulation,
+                    onSelectRegion = { selectedRegion = it },
+                    onSelectPopulation = { selectedPopulation = it },
+                    onApply = {
+                        applyFilters()
+                        isSheetVisible = false
+                    },
+                    onClear = {
+                        selectedRegion = null
+                        selectedPopulation = null
+                        applyFilters()
+                    }
                 )
             }
-        },
+        )
+    }
+
+    Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Países") },
+                title = {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "Países")
+                    }
+                },
                 actions = {
-                    IconButton(onClick = { showFilters = true }) {
-                        Icon(Icons.Default.FilterList, contentDescription = "Filtros")
+                    IconButton(onClick = { isSheetVisible = true }) {
+                        Icon(Icons.Default.FilterList, contentDescription = "Filtrar")
                     }
                 }
             )
-        },
-        modifier = modifier
+        }
     ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues)) {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
             SearchBar(
                 query = query,
-                onQueryChange = { query = it },
+                onQueryChange = {
+                    query = it
+                    applyFilters()
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 8.dp)
-            ) {
-                val filteredCountries = countries.filter { it.name.contains(query, ignoreCase = true) }
-                items(filteredCountries) { country ->
-                    CountryCard(
-                        flagUrl = country.flag,
-                        name = country.name,
-                        region = country.region,
-                        isFavorite = favorites.contains(country.name),
-                        onFavoriteClick = { onFavoriteClick(country.name) },
-                        onClick = { onCountryClick(country.code) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp)
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                !errorMessage.isNullOrEmpty() -> {
+                    Text(
+                        text = errorMessage ?: "Erro desconhecido",
+                        modifier = Modifier.padding(16.dp)
                     )
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 8.dp)
+                    ) {
+                        items(filteredCountries) { country ->
+                            CountryCard(
+                                flagUrl = country.flag,
+                                name = country.name,
+                                region = country.region,
+                                isFavorite = false,
+                                onFavoriteClick = { onFavoriteClick(country.name) },
+                                onClick = { onCountryClick(country.code) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
     }
-
-    if (showFilters) {
-        ModalBottomSheet(
-            onDismissRequest = { showFilters = false }
-        ) {
-            var selectedRegion by remember { mutableStateOf<String?>(null) }
-            var selectedPopulation by remember { mutableStateOf<String?>(null) }
-
-            FilterBottomSheet(
-                selectedRegion = selectedRegion,
-                selectedPopulation = selectedPopulation,
-                onSelectRegion = { selectedRegion = it },
-                onSelectPopulation = { selectedPopulation = it },
-                onApply = { showFilters = false },
-                onClear = {
-                    selectedRegion = null
-                    selectedPopulation = null
-                }
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewCountryListWithFilters() {
-    val mockCountries = listOf(
-        CountryUiModel("Brasil", "América do Sul", "https://flagcdn.com/br.png", "BRA"),
-        CountryUiModel("França", "Europa", "https://flagcdn.com/fr.png", "FRA"),
-        CountryUiModel("Japão", "Ásia", "https://flagcdn.com/jp.png", "JPN"),
-        CountryUiModel("Canadá", "América do Norte", "https://flagcdn.com/ca.png", "CAN"),
-        CountryUiModel("Austrália", "Oceania", "https://flagcdn.com/au.png", "AUS"),
-        CountryUiModel("Itália", "Europa", "https://flagcdn.com/it.png", "ITA"),
-        CountryUiModel("Alemanha", "Europa", "https://flagcdn.com/de.png", "DEU"),
-        CountryUiModel("China", "Ásia", "https://flagcdn.com/cn.png", "CHN")
-    )
-
-    CountryListWithFilters(
-        countries = mockCountries,
-        favorites = listOf("Brasil"),
-        onFavoriteClick = {},
-        onCountryClick = {}
-    )
 }

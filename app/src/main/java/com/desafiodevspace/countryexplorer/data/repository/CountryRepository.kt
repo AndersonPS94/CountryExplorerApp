@@ -2,49 +2,33 @@ package com.desafiodevspace.countryexplorer.data.repository
 
 import com.desafiodevspace.countryexplorer.data.model.Country
 import com.desafiodevspace.countryexplorer.data.network.RetrofitInstance
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import java.io.IOException
+import java.net.URLEncoder
 
 class CountryRepository {
 
     suspend fun getAllCountries(): Result<List<Country>> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val response = RetrofitInstance.api.getAllCountries()
-                Result.success(response)
-            } catch (e: IOException) {
-                Result.failure(e) // Erro de rede
-            } catch (e: HttpException) {
-                Result.failure(e) // Erro HTTP
-            }
-        }
+        return safeApiCall { RetrofitInstance.api.getAllCountries() }
     }
 
     suspend fun getCountryByName(name: String): Result<List<Country>> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val response = RetrofitInstance.api.getCountryByName(name)
-                Result.success(response)
-            } catch (e: IOException) {
-                Result.failure(e)
-            } catch (e: HttpException) {
-                Result.failure(e)
-            }
-        }
+        val encodedName = URLEncoder.encode(name, "UTF-8")
+        return safeApiCall { RetrofitInstance.api.getCountryByName(encodedName) }
     }
 
     suspend fun getCountryByCode(code: String): Result<Country> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val response = RetrofitInstance.api.getCountryByCode(code)
-                Result.success(response)
-            } catch (e: IOException) {
-                Result.failure(e)
-            } catch (e: HttpException) {
-                Result.failure(e)
-            }
+        if (code.isBlank()) return Result.failure(Exception("Código do país vazio"))
+        return safeApiCall { RetrofitInstance.api.getCountryByCode(code) }
+    }
+
+    private suspend fun <T> safeApiCall(apiCall: suspend () -> T): Result<T> {
+        return try {
+            Result.success(apiCall())
+        } catch (e: IOException) {
+            Result.failure(e)
+        } catch (e: HttpException) {
+            Result.failure(Exception("Erro HTTP ${e.code()}: ${e.message()}"))
         }
     }
 }
