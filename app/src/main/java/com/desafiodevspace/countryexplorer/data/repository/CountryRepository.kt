@@ -1,46 +1,60 @@
 package com.desafiodevspace.countryexplorer.data.repository
 
+import android.content.Context
 import com.desafiodevspace.countryexplorer.data.model.Country
+import com.desafiodevspace.countryexplorer.data.model.Currency
+import com.desafiodevspace.countryexplorer.data.model.Flags
+import com.desafiodevspace.countryexplorer.data.model.Name
 import com.desafiodevspace.countryexplorer.data.network.RetrofitInstance
+import com.desafiodevspace.countryexplorer.data.room.AppDatabase
+import com.desafiodevspace.countryexplorer.data.room.CountryEntity
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import retrofit2.HttpException
 import java.io.IOException
 import java.net.URLEncoder
-import kotlin.collections.firstOrNull
 
-class CountryRepository {
+class CountryRepository(context: Context) {
 
-    suspend fun getAllCountries(): Result<List<Country>> {
+    private val countryDao = AppDatabase.getInstance(context).countryDao()
+
+    /** ------------------ OFFLINE FIRST ------------------ **/
+
+    fun getAllCountriesLocal(): Flow<List<Country>> =
+        countryDao.getAllCountries().map { list ->
+            list.map { it.toCountry() }
+        }
+
+    fun getCountryByCodeLocal(code: String): Flow<Country?> =
+        countryDao.getCountryByCode(code).map { it?.toCountry() }
+
+    /** ------------------ API ------------------ **/
+
+    suspend fun getAllCountriesRemote(): Result<List<Country>> {
         return safeApiCall {
-            RetrofitInstance.api.getAllCountries(
-                fields = "name,flags,region,cca3"
+            val list = RetrofitInstance.api.getAllCountries(
+                fields = "name,flags,region,population,capital,languages,currencies,borders,cca3"
             )
+            // Converte e salva no banco
+            val entities = list.map { it.toEntity() }
+            countryDao.insertAll(entities)
+            list
         }
     }
 
-    suspend fun getCountryByName(name: String): Result<List<Country>> {
-        if (name.isBlank()) {
-            return Result.success(emptyList())
-        }
-
-        val encodedName = URLEncoder.encode(name, "UTF-8")
-        return safeApiCall {
-            RetrofitInstance.api.getCountryByName(
-                name = encodedName,
-                fields = "name,flags,region,cca3"
-            )
-        }
-    }
-
-    suspend fun getCountryByCode(code: String): Result<Country> {
+    suspend fun getCountryByCodeRemote(code: String): Result<Country> {
         if (code.isBlank()) return Result.failure(Exception("Código do país vazio"))
-
         val encodedCode = URLEncoder.encode(code, "UTF-8")
 
         return safeApiCall {
-            val countryList = RetrofitInstance.api.getCountryByCode(encodedCode)
-            countryList.firstOrNull() ?: throw Exception("País com código $code não encontrado.")
+            val country = RetrofitInstance.api.getCountryByCode(encodedCode)
+            // Converte e salva no banco
+            countryDao.insertAll(listOf(CountryEntity.toEntity()))
+            country
         }
     }
+
+    /** ------------------ SAFECALL ------------------ **/
 
     private suspend fun <T> safeApiCall(apiCall: suspend () -> T): Result<T> {
         return try {
@@ -63,3 +77,31 @@ class CountryRepository {
         }
     }
 }
+
+/** ------------------ EXTENSIONS ------------------ **/
+
+// Converte Country -> CountryEntity
+fun Country.toEntity(): CountryEntity = CountryEntity(
+    code = this.cca3,
+    name = this.name.common,
+    flag = this.flags.png,
+    region = this.region,
+    population = this.population,
+    capital = this.capital?.joinToString(),
+    languages = this.languages?.values?.joinToString(),
+    currencies = this.currencies?.values?.joinToString { it.name },
+    borders = this.borders?.joinToString()
+)
+
+// Converte CountryEntity -> Country
+fun CountryEntity.toCountry(): Country = Country(
+    cca3 = this.code,
+    name = Name(this.name),
+    flags = Flags(this.flag),
+    region = this.region,
+    population = this.population,
+    capital = this.capital?.split(", ") ?: emptyList(),
+    languages = this.languages?.split(", ")?.associateWith { it } ?: emptyMap(),
+    currencies = this.currencies?.split(", ")?.associateWith { Currency(it, "") } ?: emptyMap(),
+    borders = this.borders?.split(", ") ?: emptyList()
+)

@@ -1,8 +1,9 @@
 package com.desafiodevspace.countryexplorer.data.model
 
+
 data class Country(
-    val name: Name,
-    val flags: Flags,
+    val name: Name,         // Name é outro data class
+    val flags: Flags,       // Flags é outro data class
     val region: String,
     val population: Long,
     val capital: List<String>?,

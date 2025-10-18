@@ -1,10 +1,13 @@
 package com.desafiodevspace.countryexplorer.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.desafiodevspace.countryexplorer.data.model.Country
 import com.desafiodevspace.countryexplorer.data.model.CountryUiModel
 import com.desafiodevspace.countryexplorer.data.repository.CountryRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -12,23 +15,22 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 
-class CountryViewModel(
-    private val repository: CountryRepository = CountryRepository()
-) : ViewModel() {
+class CountryViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository = CountryRepository(application.applicationContext)
 
     private val _countries = MutableStateFlow<List<Country>>(emptyList())
     val countries: StateFlow<List<Country>> = _countries
 
-
     private val countriesUi: StateFlow<List<CountryUiModel>> = _countries
         .map { countryList ->
             countryList.mapNotNull { country ->
-                val name = country.name.common ?: return@mapNotNull null
-                val flag = country.flags.png ?: return@mapNotNull null
-                val region = country.region ?: return@mapNotNull null
+                val name = country.name.common
+                val flag = country.flags.png
+                val region = country.region
+
+                if (name.isBlank() || flag.isBlank() || region.isBlank()) return@mapNotNull null
 
                 CountryUiModel(
                     name = name,
@@ -65,7 +67,6 @@ class CountryViewModel(
     private val _selectedPopulation = MutableStateFlow<String?>(null)
     val selectedPopulation: StateFlow<String?> = _selectedPopulation
 
-
     private fun populationMatches(population: Long, range: String?): Boolean {
         val ONE_MILLION = 1_000_000L
         val TEN_MILLION = 10_000_000L
@@ -73,13 +74,9 @@ class CountryViewModel(
 
         return when (range) {
             "<1M" -> population < ONE_MILLION
-
             "1M-10M" -> population in ONE_MILLION until TEN_MILLION
-
             "10M-100M" -> population in TEN_MILLION until HUNDRED_MILLION
-
             ">100M" -> population >= HUNDRED_MILLION
-
             else -> true
         }
     }
@@ -109,7 +106,6 @@ class CountryViewModel(
         _selectedPopulation.value = populationRange
     }
 
-
     init {
         fetchAllCountries()
     }
@@ -120,10 +116,10 @@ class CountryViewModel(
             _errorMessage.value = null
             _countries.value = emptyList()
 
-            val result = repository.getAllCountries()
+            val result = repository.getAllCountriesRemote()
             result.onSuccess { list ->
                 if (list.isNotEmpty()) {
-                    _countries.value = list.sortedBy { it.name.common }
+                    _countries.value = list.sortedBy { country: Country -> country.name.common }
                 } else {
                     _errorMessage.value = "Nenhum país encontrado."
                 }
@@ -147,7 +143,7 @@ class CountryViewModel(
             _selectedCountry.value = null
             _borderCountries.value = emptyList()
 
-            val result = repository.getCountryByCode(code)
+            val result = repository.getCountryByCodeRemote(code)
             result.onSuccess { country ->
                 _selectedCountry.value = country
 
@@ -170,7 +166,7 @@ class CountryViewModel(
 
             val deferredCountries = borderCodes.map { borderCode ->
                 async {
-                    repository.getCountryByCode(borderCode)
+                    repository.getCountryByCodeRemote(borderCode)
                 }
             }
 
@@ -182,7 +178,7 @@ class CountryViewModel(
                 }
             }
 
-            _borderCountries.value = fetchedCountries.sortedBy { it.name.common }
+            _borderCountries.value = fetchedCountries.sortedBy { country: Country -> country.name.common }
         }
     }
 }

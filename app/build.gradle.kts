@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    kotlin("kapt")
 }
 
 android {
@@ -55,6 +56,15 @@ android {
 }
 
 dependencies {
+
+    // Room
+    implementation ("androidx.room:room-runtime:2.8.2")
+    kapt ("androidx.room:room-compiler:2.8.2")
+    implementation ("androidx.room:room-ktx:2.8.2")
+
+// Coroutines
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+
     // 🔹 Core AndroidX
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
