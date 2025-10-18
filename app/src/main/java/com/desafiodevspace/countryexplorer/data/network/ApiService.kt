@@ -21,6 +21,5 @@ interface ApiService {
     @GET("alpha/{code}")
     suspend fun getCountryByCode(
         @Path("code") code: String,
-        @Query("fields") fields: String = "name,flags,region,cca3"
-    ): Country
+    ): List<Country>
 }

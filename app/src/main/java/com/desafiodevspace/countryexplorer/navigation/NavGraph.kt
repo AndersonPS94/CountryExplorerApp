@@ -35,10 +35,17 @@ fun CountryNavGraph(navController: NavHostController, viewModel: CountryViewMode
             arguments = listOf(navArgument("countryCode") { type = NavType.StringType })
         ) { backStackEntry ->
             val code = backStackEntry.arguments?.getString("countryCode") ?: return@composable
+
             CountryDetailScreen(
                 countryCode = code,
                 viewModel = viewModel,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+
+                onNavigateToCountryDetail = { borderCode ->
+                    navController.navigate(Routes.CountryDetail.createRoute(borderCode)) {
+                        launchSingleTop = true
+                    }
+                }
             )
         }
     }

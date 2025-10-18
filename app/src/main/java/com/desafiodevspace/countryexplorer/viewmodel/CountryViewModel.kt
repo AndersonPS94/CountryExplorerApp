@@ -7,6 +7,8 @@ import com.desafiodevspace.countryexplorer.data.repository.CountryRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 
 class CountryViewModel(
     private val repository: CountryRepository = CountryRepository()
@@ -24,8 +26,11 @@ class CountryViewModel(
     private val _selectedCountry = MutableStateFlow<Country?>(null)
     val selectedCountry: StateFlow<Country?> = _selectedCountry
 
+    private val _borderCountries = MutableStateFlow<List<Country>>(emptyList())
+    val borderCountries: StateFlow<List<Country>> = _borderCountries
+
+
     init {
-        // Carrega países assim que o ViewModel é criado
         fetchAllCountries()
     }
 
@@ -33,6 +38,7 @@ class CountryViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
+            _countries.value = emptyList()
 
             val result = repository.getAllCountries()
             result.onSuccess { list ->
@@ -58,15 +64,45 @@ class CountryViewModel(
 
             _isLoading.value = true
             _errorMessage.value = null
+            _selectedCountry.value = null
+            _borderCountries.value = emptyList()
 
             val result = repository.getCountryByCode(code)
             result.onSuccess { country ->
                 _selectedCountry.value = country
+
+                country.borders?.let { borderCodes ->
+                    if (borderCodes.isNotEmpty()) {
+                        fetchBorderCountries(borderCodes)
+                    }
+                }
             }.onFailure { e ->
                 _errorMessage.value = e.message ?: "Erro ao carregar país."
             }
 
             _isLoading.value = false
+        }
+    }
+
+    private fun fetchBorderCountries(borderCodes: List<String>) {
+        viewModelScope.launch {
+            val fetchedCountries = mutableListOf<Country>()
+
+            val deferredCountries = borderCodes.map { borderCode ->
+                async {
+                    repository.getCountryByCode(borderCode)
+                }
+            }
+
+            deferredCountries.awaitAll().forEach { result ->
+                result.onSuccess { country ->
+                    fetchedCountries.add(country)
+                }.onFailure { e ->
+                    println("Erro ao carregar vizinho: ${e.message}")
+                }
+            }
+
+            _borderCountries.value = fetchedCountries.sortedBy { it.name.common }
         }
     }
 }
