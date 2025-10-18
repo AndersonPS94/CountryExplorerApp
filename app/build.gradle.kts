@@ -57,6 +57,8 @@ android {
 
 dependencies {
 
+    //splash screen
+    implementation("androidx.core:core-splashscreen:1.0.1")
     // Room
     implementation ("androidx.room:room-runtime:2.8.2")
     kapt ("androidx.room:room-compiler:2.8.2")
