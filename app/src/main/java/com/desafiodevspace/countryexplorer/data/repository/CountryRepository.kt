@@ -19,43 +19,32 @@ class CountryRepository(context: Context) {
     private val countryDao = AppDatabase.getInstance(context).countryDao()
 
     /** ------------------ OFFLINE FIRST ------------------ **/
-
     fun getAllCountriesLocal(): Flow<List<Country>> =
-        countryDao.getAllCountries().map { list ->
-            list.map { it.toCountry() }
-        }
+        countryDao.getAllCountries().map { list -> list.map { it.toCountry() } }
 
     fun getCountryByCodeLocal(code: String): Flow<Country?> =
         countryDao.getCountryByCode(code).map { it?.toCountry() }
 
     /** ------------------ API ------------------ **/
-
-    suspend fun getAllCountriesRemote(): Result<List<Country>> {
-        return safeApiCall {
-            val list = RetrofitInstance.api.getAllCountries(
-                fields = "name,flags,region,population,capital,languages,currencies,borders,cca3"
-            )
-            // Converte e salva no banco
-            val entities = list.map { it.toEntity() }
-            countryDao.insertAll(entities)
-            list
-        }
+    suspend fun getAllCountriesRemote(): Result<List<Country>> = safeApiCall {
+        val list = RetrofitInstance.api.getAllCountries(
+            fields = "name,flags,region,population,capital,languages,currencies,borders,cca3"
+        )
+        countryDao.insertAll(list.map { it.toEntity() })
+        list
     }
 
     suspend fun getCountryByCodeRemote(code: String): Result<Country> {
         if (code.isBlank()) return Result.failure(Exception("Código do país vazio"))
         val encodedCode = URLEncoder.encode(code, "UTF-8")
-
         return safeApiCall {
-            val country = RetrofitInstance.api.getCountryByCode(encodedCode)
-            // Converte e salva no banco
-            countryDao.insertAll(listOf(CountryEntity.toEntity()))
-            country
+            val countries: List<Country> = RetrofitInstance.api.getCountryByCode(encodedCode)
+            countryDao.insertAll(countries.map { it.toEntity() })
+            countries.firstOrNull() ?: throw Exception("Nenhum país encontrado para o código $code")
         }
     }
 
     /** ------------------ SAFECALL ------------------ **/
-
     private suspend fun <T> safeApiCall(apiCall: suspend () -> T): Result<T> {
         return try {
             Result.success(apiCall())
@@ -79,8 +68,6 @@ class CountryRepository(context: Context) {
 }
 
 /** ------------------ EXTENSIONS ------------------ **/
-
-// Converte Country -> CountryEntity
 fun Country.toEntity(): CountryEntity = CountryEntity(
     code = this.cca3,
     name = this.name.common,
@@ -93,7 +80,6 @@ fun Country.toEntity(): CountryEntity = CountryEntity(
     borders = this.borders?.joinToString()
 )
 
-// Converte CountryEntity -> Country
 fun CountryEntity.toCountry(): Country = Country(
     cca3 = this.code,
     name = Name(this.name),

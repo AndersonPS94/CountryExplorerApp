@@ -1,6 +1,11 @@
 package com.desafiodevspace.countryexplorer.viewmodel
 
+import android.Manifest
 import android.app.Application
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import androidx.annotation.RequiresPermission
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.desafiodevspace.countryexplorer.data.model.Country
@@ -8,43 +13,26 @@ import com.desafiodevspace.countryexplorer.data.model.CountryUiModel
 import com.desafiodevspace.countryexplorer.data.repository.CountryRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class CountryViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = CountryRepository(application.applicationContext)
 
-    private val _countries = MutableStateFlow<List<Country>>(emptyList())
-    val countries: StateFlow<List<Country>> = _countries
+    // --- Flow do banco local (fonte principal)
+    val countries: StateFlow<List<Country>> = repository.getAllCountriesLocal()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    private val countriesUi: StateFlow<List<CountryUiModel>> = _countries
-        .map { countryList ->
-            countryList.mapNotNull { country ->
-                val name = country.name.common
-                val flag = country.flags.png
-                val region = country.region
-
-                if (name.isBlank() || flag.isBlank() || region.isBlank()) return@mapNotNull null
-
-                CountryUiModel(
-                    name = name,
-                    region = region,
-                    flag = flag,
-                    code = country.cca3,
-                    population = country.population
-                )
-            }
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Eagerly,
-            initialValue = emptyList()
-        )
+    val countriesUi: StateFlow<List<CountryUiModel>> = countries.map { list ->
+        list.mapNotNull { country ->
+            val name = country.name.common
+            val flag = country.flags.png
+            val region = country.region
+            if (name.isBlank() || flag.isBlank() || region.isBlank()) return@mapNotNull null
+            CountryUiModel(name, region, flag, country.cca3, country.population)
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -71,7 +59,6 @@ class CountryViewModel(application: Application) : AndroidViewModel(application)
         val ONE_MILLION = 1_000_000L
         val TEN_MILLION = 10_000_000L
         val HUNDRED_MILLION = 100_000_000L
-
         return when (range) {
             "<1M" -> population < ONE_MILLION
             "1M-10M" -> population in ONE_MILLION until TEN_MILLION
@@ -86,74 +73,63 @@ class CountryViewModel(application: Application) : AndroidViewModel(application)
             list.filter { it.name.contains(query, ignoreCase = true) }
         }.combine(_selectedRegion) { list, region ->
             list.filter { region == null || it.region == region }
-        }.combine(_selectedPopulation) { list, populationRange ->
-            list.filter { populationRange == null || populationMatches(it.population, populationRange) }
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+        }.combine(_selectedPopulation) { list, range ->
+            list.filter { range == null || populationMatches(it.population, range) }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun updateSearchQuery(query: String) {
-        _searchQuery.value = query
-    }
-
-    fun updateRegionFilter(region: String?) {
-        _selectedRegion.value = region
-    }
-
-    fun updatePopulationFilter(populationRange: String?) {
-        _selectedPopulation.value = populationRange
-    }
+    fun updateSearchQuery(query: String) { _searchQuery.value = query }
+    fun updateRegionFilter(region: String?) { _selectedRegion.value = region }
+    fun updatePopulationFilter(range: String?) { _selectedPopulation.value = range }
 
     init {
-        fetchAllCountries()
+        // Atualiza do servidor somente se houver internet
+        if (isOnline()) refreshCountries()
     }
 
-    fun fetchAllCountries() {
+    @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
+    private fun isOnline(): Boolean {
+        val cm = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val capabilities = cm.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    fun refreshCountries() {
         viewModelScope.launch {
-            _isLoading.value = true
-            _errorMessage.value = null
-            _countries.value = emptyList()
-
-            val result = repository.getAllCountriesRemote()
-            result.onSuccess { list ->
-                if (list.isNotEmpty()) {
-                    _countries.value = list.sortedBy { country: Country -> country.name.common }
-                } else {
-                    _errorMessage.value = "Nenhum país encontrado."
+            try {
+                val result = repository.getAllCountriesRemote()
+                result.onFailure {
+                    // Offline-safe: apenas log, não mostra erro na UI
+                    println("Não foi possível atualizar do servidor: ${it.message}")
                 }
-            }.onFailure { e ->
-                _errorMessage.value = e.message ?: "Erro ao carregar países."
+            } catch (e: Exception) {
+                println("Erro ao atualizar países: ${e.message}")
             }
-
-            _isLoading.value = false
         }
     }
 
     fun fetchCountryByCode(code: String) {
         viewModelScope.launch {
-            if (code.isBlank()) {
-                _errorMessage.value = "Código do país inválido."
-                return@launch
-            }
+            if (code.isBlank()) { _errorMessage.value = "Código inválido."; return@launch }
 
             _isLoading.value = true
             _errorMessage.value = null
             _selectedCountry.value = null
             _borderCountries.value = emptyList()
 
-            val result = repository.getCountryByCodeRemote(code)
-            result.onSuccess { country ->
-                _selectedCountry.value = country
+            // Pega do banco local
+            _selectedCountry.value = repository.getCountryByCodeLocal(code).firstOrNull()
 
-                country.borders?.let { borderCodes ->
-                    if (borderCodes.isNotEmpty()) {
-                        fetchBorderCountries(borderCodes)
-                    }
+            // Atualiza do servidor somente se houver internet
+            if (isOnline()) {
+                val result = repository.getCountryByCodeRemote(code)
+                result.onSuccess { country ->
+                    _selectedCountry.value = country
+                    country.borders?.let { fetchBorderCountries(it) }
+                }.onFailure {
+                    // Offline-safe: não sobrescreve dados locais
+                    println("Não foi possível atualizar país: ${it.message}")
                 }
-            }.onFailure { e ->
-                _errorMessage.value = e.message ?: "Erro ao carregar país."
             }
 
             _isLoading.value = false
@@ -162,23 +138,21 @@ class CountryViewModel(application: Application) : AndroidViewModel(application)
 
     private fun fetchBorderCountries(borderCodes: List<String>) {
         viewModelScope.launch {
-            val fetchedCountries = mutableListOf<Country>()
+            val localCountries = borderCodes.mapNotNull { code ->
+                repository.getCountryByCodeLocal(code).firstOrNull()
+            }.toMutableList()
 
-            val deferredCountries = borderCodes.map { borderCode ->
-                async {
-                    repository.getCountryByCodeRemote(borderCode)
-                }
+            val missingCodes = borderCodes.filter { code ->
+                localCountries.none { it.cca3 == code }
             }
 
-            deferredCountries.awaitAll().forEach { result ->
-                result.onSuccess { country ->
-                    fetchedCountries.add(country)
-                }.onFailure { e ->
-                    println("Erro ao carregar vizinho: ${e.message}")
-                }
+            val deferred = missingCodes.map { code ->
+                async { repository.getCountryByCodeRemote(code) }
             }
 
-            _borderCountries.value = fetchedCountries.sortedBy { country: Country -> country.name.common }
+            deferred.awaitAll().forEach { it.onSuccess { localCountries.add(it) } }
+
+            _borderCountries.value = localCountries.sortedBy { it.name.common }
         }
     }
 }
