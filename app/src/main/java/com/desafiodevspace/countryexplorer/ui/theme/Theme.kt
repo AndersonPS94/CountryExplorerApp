@@ -10,8 +10,6 @@ import androidx.compose.ui.platform.LocalContext
 
 
 
-
-
 val DarkColorScheme = androidx.compose.material3.darkColorScheme(
     primary = DarkAccent,
     onPrimary = DarkTextPrimary,

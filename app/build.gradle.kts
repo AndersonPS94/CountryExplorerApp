@@ -56,6 +56,12 @@ android {
 }
 
 dependencies {
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+
+
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("io.mockk:mockk:1.14.4")
+    testImplementation("app.cash.turbine:turbine:0.13.0")
 
     //splash screen
     implementation("androidx.core:core-splashscreen:1.0.1")
@@ -108,7 +114,8 @@ dependencies {
 
     // 🔹 Debug (para Previews)
     debugImplementation("androidx.compose.ui:ui-tooling")
-    debugImplementation("androidx.compose.ui:ui-test-manifest") // corrigido
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation(kotlin("test"))
 
 
 }
