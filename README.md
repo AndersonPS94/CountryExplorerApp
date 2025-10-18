@@ -27,6 +27,19 @@ Uma aplicação Android moderna e reativa, desenvolvida em Kotlin, que permite e
 | **Assincronismo** | **Kotlin Coroutines** | Gerenciamento de operações assíncronas e concorrentes. |
 | **Imagens** | **Coil** | Carregamento e cache de imagens otimizado para Compose. |
 | **Navegação** | **Compose Navigation** | Gerenciamento da navegação entre telas no Compose. |
+| **Testes** | **JUnit & MockK** | Testes unitários de ViewModels e Repositories. |
+
+---
+
+## 🧪 Testes Unitários
+
+O projeto inclui testes unitários para garantir a robustez e confiabilidade da lógica de negócios:
+
+- ViewModels: Testam o comportamento da UI frente a diferentes estados (carregando, sucesso, erro).
+
+- Repositories: Validam operações de acesso a dados e integração com a API.
+
+- Mocking: Uso de MockK para simular dependências externas.
 
 ## 🚀 Como Executar o Projeto Localmente
 
