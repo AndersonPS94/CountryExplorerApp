@@ -1,6 +1,10 @@
 package com.desafiodevspace.countryexplorer.viewmodel
 
 import android.app.Application
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import com.desafiodevspace.countryexplorer.data.model.*
 import com.desafiodevspace.countryexplorer.data.repository.CountryRepository
 import io.mockk.*
@@ -20,17 +24,27 @@ class CountryViewModelTest {
 
     private lateinit var application: Application
     private lateinit var viewModel: CountryViewModel
+    private lateinit var connectivityManager: ConnectivityManager
+    private lateinit var network: Network
+    private lateinit var networkCapabilities: NetworkCapabilities
 
     @Before
     fun setup() {
         Dispatchers.setMain(StandardTestDispatcher())
 
         application = mockk(relaxed = true)
+        connectivityManager = mockk(relaxed = true)
+        network = mockk(relaxed = true)
+        networkCapabilities = mockk(relaxed = true)
 
-        // Mock do repository dentro do ViewModel
+        every { application.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
+        every { connectivityManager.activeNetwork } returns network
+        every { connectivityManager.getNetworkCapabilities(network) } returns networkCapabilities
+        every { networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) } returns true
+
         mockkConstructor(CountryRepository::class)
-        every { anyConstructed<CountryRepository>().getAllCountriesLocal() } returns flow { emit(emptyList<Country>()) }
-        every { anyConstructed<CountryRepository>().getFavorites() } returns flow { emit(emptySet<String>()) }
+        every { anyConstructed<CountryRepository>().getAllCountriesLocal() } returns flow { emit(emptyList()) }
+        every { anyConstructed<CountryRepository>().getFavorites() } returns flow { emit(emptySet()) }
         coEvery { anyConstructed<CountryRepository>().toggleFavorite(any()) } just Runs
         every { anyConstructed<CountryRepository>().getCountryByCodeLocal(any()) } returns emptyFlow()
         coEvery { anyConstructed<CountryRepository>().getCountryByCodeRemote(any()) } returns Result.failure(Exception("Not implemented"))
@@ -42,6 +56,7 @@ class CountryViewModelTest {
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+        unmockkAll()
     }
 
     @Test
