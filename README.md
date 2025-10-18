@@ -70,8 +70,9 @@ Siga os passos abaixo para clonar e rodar o projeto em sua máquina local:
 ## 📚 Créditos, Licença e Autor
 
 ### ✍️ Autor
-* **Anderson Pereira dos Santos**
-    * [GitHub](https://github.com/AndersonPS94)
+| Nome | GitHub | LinkedIn |
+| :--- | :--- | :--- |
+| **Anderson Santos** | [AndersonPS94](https://github.com/AndersonPS94) | [Anderson Santos](https://www.linkedin.com/in/andersonps94) |
 
 ### 📄 Licença
 Este projeto está licenciado sob a Licença **MIT** - veja o arquivo [LICENSE](LICENSE) para mais detalhes.
