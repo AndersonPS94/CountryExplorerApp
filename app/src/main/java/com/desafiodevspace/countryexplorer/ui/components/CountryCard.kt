@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 
@@ -29,7 +30,8 @@ fun CountryCard(
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    backgroundColor: Color = MaterialTheme.colorScheme.background
 ) {
     Card(
         modifier = Modifier
@@ -37,7 +39,10 @@ fun CountryCard(
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor
+        )
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -85,3 +90,17 @@ fun CountryCard(
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun CountryCardPreview() {
+    MaterialTheme {
+        CountryCard(
+            flagUrl = "https://flagcdn.com/w320/br.png",
+            name = "Brazil",
+            region = "South America",
+            isFavorite = true,
+            onFavoriteClick = {},
+            onClick = {}
+        )
+    }
+}

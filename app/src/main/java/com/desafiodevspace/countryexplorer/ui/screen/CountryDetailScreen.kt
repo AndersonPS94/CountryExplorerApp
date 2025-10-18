@@ -191,6 +191,7 @@ fun CountryDetailsContent(
                     items(borderCountries) { borderCountry ->
                         AssistChip(
                             onClick = { onNavigateToCountryDetail(borderCountry.cca3) },
+                            shape = MaterialTheme.shapes.large,
                             label = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     AsyncImage(
