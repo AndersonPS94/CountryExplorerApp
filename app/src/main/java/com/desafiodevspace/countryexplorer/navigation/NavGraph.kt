@@ -1,6 +1,7 @@
 package com.desafiodevspace.countryexplorer.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -13,20 +14,27 @@ import com.desafiodevspace.countryexplorer.viewmodel.CountryViewModel
 
 @Composable
 fun CountryNavGraph(navController: NavHostController, viewModel: CountryViewModel) {
+    // Observa favoritos
+    val favorites = viewModel.favorites.collectAsState().value
+
     NavHost(navController = navController, startDestination = Routes.CountryList.route) {
         composable(Routes.CountryList.route) {
             CountryListScreen(
                 viewModel = viewModel,
-                onCountryClick = { code -> navController.navigate(Routes.CountryDetail.createRoute(code)) },
-                onFavoriteClick = {}
+                onCountryClick = { code ->
+                    navController.navigate(Routes.CountryDetail.createRoute(code))
+                }
             )
         }
 
         composable(Routes.Favorites.route) {
             FavoritesScreen(
-                favorites = listOf(),
-                onCountryClick = { code -> navController.navigate(Routes.CountryDetail.createRoute(code)) },
-                onBack = { navController.popBackStack() }
+                countries = viewModel.countriesUi.collectAsState().value,
+                favorites = favorites,
+                viewModel= viewModel,
+                onCountryClick = { code ->
+                    navController.navigate(Routes.CountryDetail.createRoute(code))
+                }
             )
         }
 
@@ -40,7 +48,6 @@ fun CountryNavGraph(navController: NavHostController, viewModel: CountryViewMode
                 countryCode = code,
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() },
-
                 onNavigateToCountryDetail = { borderCode ->
                     navController.navigate(Routes.CountryDetail.createRoute(borderCode)) {
                         launchSingleTop = true

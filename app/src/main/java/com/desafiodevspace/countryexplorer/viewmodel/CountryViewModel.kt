@@ -20,7 +20,6 @@ class CountryViewModel(application: Application) : AndroidViewModel(application)
 
     private val repository = CountryRepository(application.applicationContext)
 
-    // --- Flow do banco local (fonte principal)
     val countries: StateFlow<List<Country>> = repository.getAllCountriesLocal()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -33,6 +32,13 @@ class CountryViewModel(application: Application) : AndroidViewModel(application)
             CountryUiModel(name, region, flag, country.cca3, country.population)
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val favorites: StateFlow<Set<String>> = repository.getFavorites()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    fun toggleFavorite(code: String) = viewModelScope.launch {
+        repository.toggleFavorite(code)
+    }
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -82,7 +88,6 @@ class CountryViewModel(application: Application) : AndroidViewModel(application)
     fun updatePopulationFilter(range: String?) { _selectedPopulation.value = range }
 
     init {
-        // Atualiza do servidor somente se houver internet
         if (isOnline()) refreshCountries()
     }
 
@@ -99,36 +104,35 @@ class CountryViewModel(application: Application) : AndroidViewModel(application)
             try {
                 val result = repository.getAllCountriesRemote()
                 result.onFailure {
-                    // Offline-safe: apenas log, não mostra erro na UI
-                    println("Não foi possível atualizar do servidor: ${it.message}")
+                    println("Unable to refresh from server: ${it.message}")
                 }
             } catch (e: Exception) {
-                println("Erro ao atualizar países: ${e.message}")
+                println("Error updating countries: ${e.message}")
             }
         }
     }
 
     fun fetchCountryByCode(code: String) {
         viewModelScope.launch {
-            if (code.isBlank()) { _errorMessage.value = "Código inválido."; return@launch }
+            if (code.isBlank()) {
+                _errorMessage.value = "Invalid country code.";
+                return@launch
+            }
 
             _isLoading.value = true
             _errorMessage.value = null
             _selectedCountry.value = null
             _borderCountries.value = emptyList()
 
-            // Pega do banco local
             _selectedCountry.value = repository.getCountryByCodeLocal(code).firstOrNull()
 
-            // Atualiza do servidor somente se houver internet
             if (isOnline()) {
                 val result = repository.getCountryByCodeRemote(code)
                 result.onSuccess { country ->
                     _selectedCountry.value = country
                     country.borders?.let { fetchBorderCountries(it) }
                 }.onFailure {
-                    // Offline-safe: não sobrescreve dados locais
-                    println("Não foi possível atualizar país: ${it.message}")
+                    println("Unable to update country: ${it.message}")
                 }
             }
 
@@ -146,10 +150,7 @@ class CountryViewModel(application: Application) : AndroidViewModel(application)
                 localCountries.none { it.cca3 == code }
             }
 
-            val deferred = missingCodes.map { code ->
-                async { repository.getCountryByCodeRemote(code) }
-            }
-
+            val deferred = missingCodes.map { code -> async { repository.getCountryByCodeRemote(code) } }
             deferred.awaitAll().forEach { it.onSuccess { localCountries.add(it) } }
 
             _borderCountries.value = localCountries.sortedBy { it.name.common }

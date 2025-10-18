@@ -20,14 +20,12 @@ import com.desafiodevspace.countryexplorer.viewmodel.CountryViewModel
 fun CountryListScreen(
     viewModel: CountryViewModel,
     onCountryClick: (String) -> Unit,
-    onFavoriteClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-
     val filteredCountries by viewModel.filteredCountries.collectAsState()
+    val favorites by viewModel.favorites.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
-
 
     val query by viewModel.searchQuery.collectAsState()
     val selectedRegion by viewModel.selectedRegion.collectAsState()
@@ -35,6 +33,7 @@ fun CountryListScreen(
 
     var isSheetVisible by remember { mutableStateOf(false) }
 
+    // Filter bottom sheet
     if (isSheetVisible) {
         ModalBottomSheet(
             onDismissRequest = { isSheetVisible = false },
@@ -44,9 +43,7 @@ fun CountryListScreen(
                     selectedPopulation = selectedPopulation,
                     onSelectRegion = { viewModel.updateRegionFilter(it) },
                     onSelectPopulation = { viewModel.updatePopulationFilter(it) },
-                    onApply = {
-                        isSheetVisible = false
-                    },
+                    onApply = { isSheetVisible = false },
                     onClear = {
                         viewModel.updateRegionFilter(null)
                         viewModel.updatePopulationFilter(null)
@@ -65,12 +62,12 @@ fun CountryListScreen(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "Países")
+                        Text(text = "Countries")
                     }
                 },
                 actions = {
                     IconButton(onClick = { isSheetVisible = true }) {
-                        Icon(Icons.Default.FilterList, contentDescription = "Filtrar")
+                        Icon(Icons.Default.FilterList, contentDescription = "Filter")
                     }
                 }
             )
@@ -81,11 +78,10 @@ fun CountryListScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Search bar
             SearchBar(
                 query = query,
-                onQueryChange = {
-                    viewModel.updateSearchQuery(it)
-                },
+                onQueryChange = { viewModel.updateSearchQuery(it) },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -101,7 +97,7 @@ fun CountryListScreen(
 
                 !errorMessage.isNullOrEmpty() -> {
                     Text(
-                        text = errorMessage ?: "Erro desconhecido",
+                        text = errorMessage ?: "Unknown error",
                         modifier = Modifier.padding(16.dp)
                     )
                 }
@@ -112,7 +108,7 @@ fun CountryListScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Nenhum país encontrado com os filtros e busca atuais.",
+                            text = "No countries found for the current search and filters.",
                             modifier = Modifier.padding(16.dp)
                         )
                     }
@@ -129,8 +125,8 @@ fun CountryListScreen(
                                 flagUrl = country.flag,
                                 name = country.name,
                                 region = country.region,
-                                isFavorite = false,
-                                onFavoriteClick = { onFavoriteClick(country.code) },
+                                isFavorite = favorites.contains(country.code),
+                                onFavoriteClick = { viewModel.toggleFavorite(country.code) },
                                 onClick = { onCountryClick(country.code) },
                                 modifier = Modifier
                                     .fillMaxWidth()

@@ -29,7 +29,7 @@ fun SearchBar(
             )
         },
         placeholder = {
-            Text(text = "Buscar país...") },
+            Text(text = "Search for a country...") },
         singleLine = true,
         shape = RoundedCornerShape(24.dp),
         modifier = Modifier

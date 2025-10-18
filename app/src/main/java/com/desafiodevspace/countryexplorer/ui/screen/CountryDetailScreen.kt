@@ -4,6 +4,8 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -17,8 +19,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.desafiodevspace.countryexplorer.data.model.Country
 import com.desafiodevspace.countryexplorer.viewmodel.CountryViewModel
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,12 +40,19 @@ fun CountryDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = "Detalhes do País") },
+                title = {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "Country Details")
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Voltar"
+                            contentDescription = "Back"
                         )
                     }
                 }
@@ -63,7 +70,7 @@ fun CountryDetailScreen(
                 }
                 !errorMessage.isNullOrEmpty() -> {
                     Text(
-                        text = errorMessage ?: "Erro desconhecido",
+                        text = errorMessage ?: "Unknown error",
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -96,7 +103,7 @@ fun CountryDetailsContent(
             .padding(16.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        // Nome do País
+        // Country Name
         Text(
             text = country.name.common,
             style = MaterialTheme.typography.headlineLarge,
@@ -138,23 +145,23 @@ fun CountryDetailsContent(
                 )
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
                 DetailItem(
-                    label = "População",
-                    // Garantir que a população seja formatada, se não for nula
-                    value = country.population.takeIf { it > 0 }?.let { String.format("%,d", it) } ?: "N/A"
+                    label = "Population",
+                    value = country.population.takeIf { it > 0 }
+                        ?.let { String.format("%,d", it) } ?: "N/A"
                 )
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
                 DetailItem(
-                    label = "Região",
+                    label = "Region",
                     value = country.region
                 )
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
                 DetailItem(
-                    label = "Línguas",
+                    label = "Languages",
                     value = country.languages?.values?.joinToString() ?: "N/A"
                 )
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
                 DetailItem(
-                    label = "Moedas",
+                    label = "Currencies",
                     value = country.currencies?.values?.joinToString { it.name } ?: "N/A"
                 )
             }
@@ -162,9 +169,9 @@ fun CountryDetailsContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        if (country.borders != null && country.borders.isNotEmpty()) {
+        if (!country.borders.isNullOrEmpty()) {
             Text(
-                text = "Países vizinhos",
+                text = "Neighboring Countries",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 12.dp)
@@ -172,7 +179,9 @@ fun CountryDetailsContent(
 
             if (borderCountries.isEmpty()) {
                 CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.CenterHorizontally).size(24.dp)
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .size(24.dp)
                 )
             } else {
                 LazyRow(
@@ -181,9 +190,7 @@ fun CountryDetailsContent(
                 ) {
                     items(borderCountries) { borderCountry ->
                         AssistChip(
-                            onClick = {
-                                onNavigateToCountryDetail(borderCountry.cca3)
-                            },
+                            onClick = { onNavigateToCountryDetail(borderCountry.cca3) },
                             label = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     AsyncImage(
@@ -203,7 +210,7 @@ fun CountryDetailsContent(
             }
         } else {
             Text(
-                text = "Nenhum país vizinho.",
+                text = "No neighboring countries.",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(bottom = 12.dp)
             )

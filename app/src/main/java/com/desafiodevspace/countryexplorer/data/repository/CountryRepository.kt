@@ -8,15 +8,21 @@ import com.desafiodevspace.countryexplorer.data.model.Name
 import com.desafiodevspace.countryexplorer.data.network.RetrofitInstance
 import com.desafiodevspace.countryexplorer.data.room.AppDatabase
 import com.desafiodevspace.countryexplorer.data.room.CountryEntity
+import com.desafiodevspace.countryexplorer.data.room.FavoriteEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import retrofit2.HttpException
 import java.io.IOException
 import java.net.URLEncoder
+import kotlin.collections.emptyList
 
 class CountryRepository(context: Context) {
 
     private val countryDao = AppDatabase.getInstance(context).countryDao()
+    private val favoriteDao = AppDatabase.getInstance(context).favoriteDao()
+
+
 
     /** ------------------ OFFLINE FIRST ------------------ **/
     fun getAllCountriesLocal(): Flow<List<Country>> =
@@ -24,6 +30,23 @@ class CountryRepository(context: Context) {
 
     fun getCountryByCodeLocal(code: String): Flow<Country?> =
         countryDao.getCountryByCode(code).map { it?.toCountry() }
+
+    /** ------------------ FAVORITOS ------------------ **/
+    fun getFavorites(): Flow<Set<String>> =
+        favoriteDao.getAllFavorites().map { list -> list.map { it.countryCode }.toSet() }
+
+    suspend fun addFavorite(code: String) {
+        favoriteDao.insert(FavoriteEntity(code))
+    }
+
+    suspend fun removeFavorite(code: String) {
+        favoriteDao.delete(FavoriteEntity(code))
+    }
+
+    suspend fun toggleFavorite(code: String) {
+        val current = favoriteDao.getAllFavorites().firstOrNull()?.map { it.countryCode } ?: emptyList()
+        if (current.contains(code)) removeFavorite(code) else addFavorite(code)
+    }
 
     /** ------------------ API ------------------ **/
     suspend fun getAllCountriesRemote(): Result<List<Country>> = safeApiCall {

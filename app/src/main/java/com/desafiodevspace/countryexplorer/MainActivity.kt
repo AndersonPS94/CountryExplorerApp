@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 icon = { Icon(Icons.Default.Public, contentDescription = "Países") },
-                                label = { Text("Países") }
+                                label = { Text("Countries") }
                             )
                             NavigationBarItem(
                                 selected = selectedItem == Routes.Favorites.route,
@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 icon = { Icon(Icons.Default.Star, contentDescription = "Favoritos") },
-                                label = { Text("Favoritos") }
+                                label = { Text("Favorites") }
                             )
                         }
                     }

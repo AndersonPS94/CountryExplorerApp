@@ -18,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 
@@ -75,8 +74,7 @@ fun CountryCard(
                 )
             }
 
-            // Botão favorito
-            IconButton(onClick = onFavoriteClick) {
+            IconButton(onClick = { onFavoriteClick() }) {
                 Icon(
                     imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                     contentDescription = if (isFavorite) "Unfavorite $name" else "Favorite $name",
