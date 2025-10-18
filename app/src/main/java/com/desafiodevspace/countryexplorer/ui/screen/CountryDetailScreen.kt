@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.desafiodevspace.countryexplorer.data.model.Country
-import com.desafiodevspace.countryexplorer.ui.viewmodel.CountryViewModel
+import com.desafiodevspace.countryexplorer.viewmodel.CountryViewModel
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 

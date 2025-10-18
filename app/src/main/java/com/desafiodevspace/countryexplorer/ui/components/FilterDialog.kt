@@ -39,15 +39,15 @@ fun FilterBottomSheet(
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        Text("Filtros", style = MaterialTheme.typography.titleMedium)
+        Text("Filters", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
 
-        Text("Filtrar por Região", fontWeight = FontWeight.Bold)
+        Text("Filter by Region", fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(4.dp))
         FlowRow(
             horizontalArrangement = Arrangement.Absolute.spacedBy(8.dp)
         ) {
-            val regions = listOf("África", "Américas", "Ásia", "Europa", "Oceania")
+            val regions = listOf("Africa", "Americas", "Asia", "Europe", "Oceania")
             regions.forEach { region ->
                 FilterChip(
                     selected = selectedRegion == region,
@@ -59,8 +59,7 @@ fun FilterBottomSheet(
 
         Spacer(Modifier.height(12.dp))
 
-        Text("Filtrar por População", fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(4.dp))
+        Text("Filter by Population", fontWeight = FontWeight.Bold)
         FlowRow(
             horizontalArrangement = Arrangement.Absolute.spacedBy(8.dp)
         ) {
@@ -79,8 +78,8 @@ fun FilterBottomSheet(
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth()
         ) {
-            OutlinedButton(onClick = onClear) { Text("Limpar Filtros") }
-            OutlinedButton(onClick = onApply) { Text("Aplicar Filtros") }
+            OutlinedButton(onClick = onClear) { Text("Clear Filters") }
+            OutlinedButton(onClick = onApply) { Text("Apply Filters") }
         }
     }
 }
@@ -94,8 +93,7 @@ fun FilterBottomSheetPreview() {
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Agora os estados são String? e podem receber null
-            var selectedRegion by remember { mutableStateOf<String?>("África") }
+            var selectedRegion by remember { mutableStateOf<String?>("Africa") }
             var selectedPopulation by remember { mutableStateOf<String?>("10M-100M") }
 
             FilterBottomSheet(
@@ -103,7 +101,7 @@ fun FilterBottomSheetPreview() {
                 selectedPopulation = selectedPopulation,
                 onSelectRegion = { selectedRegion = it },
                 onSelectPopulation = { selectedPopulation = it },
-                onApply = { /* ação de teste */ },
+                onApply = { /* test action */ },
                 onClear = {
                     selectedRegion = null
                     selectedPopulation = null

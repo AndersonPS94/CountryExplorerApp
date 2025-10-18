@@ -10,11 +10,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.desafiodevspace.countryexplorer.data.model.CountryUiModel
 import com.desafiodevspace.countryexplorer.ui.components.CountryCard
 import com.desafiodevspace.countryexplorer.ui.components.FilterBottomSheet
 import com.desafiodevspace.countryexplorer.ui.components.SearchBar
-import com.desafiodevspace.countryexplorer.ui.viewmodel.CountryViewModel
+import com.desafiodevspace.countryexplorer.viewmodel.CountryViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,58 +23,18 @@ fun CountryListScreen(
     onFavoriteClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val countries by viewModel.countries.collectAsState()
+
+    val filteredCountries by viewModel.filteredCountries.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
 
-    var query by remember { mutableStateOf("") }
-    var selectedRegion by remember { mutableStateOf<String?>(null) }
-    var selectedPopulation by remember { mutableStateOf<String?>(null) }
+
+    val query by viewModel.searchQuery.collectAsState()
+    val selectedRegion by viewModel.selectedRegion.collectAsState()
+    val selectedPopulation by viewModel.selectedPopulation.collectAsState()
+
     var isSheetVisible by remember { mutableStateOf(false) }
 
-    // Estado da lista filtrada
-    var filteredCountries by remember { mutableStateOf(listOf<CountryUiModel>()) }
-
-    // Converte Country -> CountryUiModel
-    val countriesUi = countries.mapNotNull { country ->
-        try {
-            CountryUiModel(
-                name = country.name.common,
-                region = country.region,
-                flag = country.flags.png,
-                code = country.cca3,
-                population = country.population
-            )
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    // Função auxiliar: populações
-    fun populationMatches(population: Long, range: String?): Boolean {
-        return when (range) {
-            "<1M" -> population < 1_000_000
-            "1M-10M" -> population in 1_000_000..10_000_000
-            "10M-100M" -> population in 10_000_000..100_000_000
-            ">100M" -> population > 100_000_000
-            else -> true
-        }
-    }
-
-    // Função que aplica filtros
-    fun applyFilters() {
-        filteredCountries = countriesUi
-            .filter { it.name.contains(query, ignoreCase = true) }
-            .filter { selectedRegion == null || it.region == selectedRegion }
-            .filter { selectedPopulation == null || populationMatches(it.population, selectedPopulation) }
-    }
-
-    // Atualiza lista assim que países são carregados
-    LaunchedEffect(countriesUi, query, selectedRegion, selectedPopulation) {
-        applyFilters()
-    }
-
-    // BottomSheet de filtros
     if (isSheetVisible) {
         ModalBottomSheet(
             onDismissRequest = { isSheetVisible = false },
@@ -83,16 +42,15 @@ fun CountryListScreen(
                 FilterBottomSheet(
                     selectedRegion = selectedRegion,
                     selectedPopulation = selectedPopulation,
-                    onSelectRegion = { selectedRegion = it },
-                    onSelectPopulation = { selectedPopulation = it },
+                    onSelectRegion = { viewModel.updateRegionFilter(it) },
+                    onSelectPopulation = { viewModel.updatePopulationFilter(it) },
                     onApply = {
-                        applyFilters()
                         isSheetVisible = false
                     },
                     onClear = {
-                        selectedRegion = null
-                        selectedPopulation = null
-                        applyFilters()
+                        viewModel.updateRegionFilter(null)
+                        viewModel.updatePopulationFilter(null)
+                        isSheetVisible = false
                     }
                 )
             }
@@ -126,8 +84,7 @@ fun CountryListScreen(
             SearchBar(
                 query = query,
                 onQueryChange = {
-                    query = it
-                    applyFilters()
+                    viewModel.updateSearchQuery(it)
                 },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -149,6 +106,18 @@ fun CountryListScreen(
                     )
                 }
 
+                filteredCountries.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Nenhum país encontrado com os filtros e busca atuais.",
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+
                 else -> {
                     LazyColumn(
                         modifier = Modifier
@@ -161,7 +130,7 @@ fun CountryListScreen(
                                 name = country.name,
                                 region = country.region,
                                 isFavorite = false,
-                                onFavoriteClick = { onFavoriteClick(country.name) },
+                                onFavoriteClick = { onFavoriteClick(country.code) },
                                 onClick = { onCountryClick(country.code) },
                                 modifier = Modifier
                                     .fillMaxWidth()

@@ -9,7 +9,7 @@ import androidx.navigation.navArgument
 import com.desafiodevspace.countryexplorer.ui.screen.CountryDetailScreen
 import com.desafiodevspace.countryexplorer.ui.screen.CountryListScreen
 import com.desafiodevspace.countryexplorer.ui.screen.FavoritesScreen
-import com.desafiodevspace.countryexplorer.ui.viewmodel.CountryViewModel
+import com.desafiodevspace.countryexplorer.viewmodel.CountryViewModel
 
 @Composable
 fun CountryNavGraph(navController: NavHostController, viewModel: CountryViewModel) {

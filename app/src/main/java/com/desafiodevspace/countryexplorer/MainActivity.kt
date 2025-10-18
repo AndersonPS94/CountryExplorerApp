@@ -17,7 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import com.desafiodevspace.countryexplorer.navigation.CountryNavGraph
 import com.desafiodevspace.countryexplorer.navigation.Routes
 import com.desafiodevspace.countryexplorer.ui.theme.CountryExplorerTheme
-import com.desafiodevspace.countryexplorer.ui.viewmodel.CountryViewModel
+import com.desafiodevspace.countryexplorer.viewmodel.CountryViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
